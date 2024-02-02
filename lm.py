@@ -16,6 +16,10 @@ WINDOW_SIZE = 1024
 STEP_SIZE = int(WINDOW_SIZE / 2)
 
 def cosine_distance_matrix(words):
+    """
+    Get cosine distances among all pairs of embeddings for words.
+    Filter out words that do not correspond to one token.
+    """
     tokens = [(word, tokenizer.encode(" "+word)) for word in words]
     good_words, good_tokens = zip(*[(word, token[0]) for word, token in tokens if len(token)==1])
     embeddings = model.transformer.wte.weight[list(good_tokens)].detach()
