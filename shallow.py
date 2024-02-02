@@ -10,28 +10,51 @@ def timecourse(lnp0, d, max_lam=10, num_steps=100):
     * lnp is an array of shape K giving prior log-probabilities for the alternatives.
     * d is an array of shape K giving distortions for each of the K interpretations.
     
+    Index 0 is assumed to be the "true" interpretation (lowest distortion).
     """
     lam = np.linspace(0, max_lam, num_steps) # shape L
-    unnormalized = lnp0 - lam[:, None]*d[None, :]  # shape LK
+    unnormalized = lnp0[None, :] - lam[:, None]*d[None, :]  # shape LK
     lnZ = scipy.special.logsumexp(unnormalized, -1) # shape L
-    p = np.exp(unnormalized - lnZ[:, None]) # shape LK
+    lnp = unnormalized - lnZ[:, None] # shape LK
+    p = np.exp(lnp) # shape LK
     df = pd.DataFrame(p) # dataframe containing probabilities for each interpretation at each time
     df['t'] = lam
     df['expected_distortion'] = p @ d
-    df['variance_distortion'] = p @ d**2 - df['expected_distortion']**2
-    df['free_energy'] = -1/lam * lnZ
+    df['variance_distortion'] = p @ d**2 - (p @ d)**2
     df['kl_div'] = -lnZ - lam*df['expected_distortion']
     df['d_kl_div'] = lam * df['variance_distortion']
     return df
 
+def moses_example(form_weight=0, sem_weight=1):
+    import lm
+    full_d_form = pd.read_csv("/Users/canjo/data/subtlex/en_editmatrix10000_plus.csv", index_col=0)
+    full_vocab = set(full_d_form.columns[1:])
+    full_vocab.add('Noah')
+    full_vocab.add('Moses')
+    vocab, d_sem = lm.cosine_distance_matrix(full_vocab)
+    lower_vocab = list(map(str.lower, vocab))
+    d_form = full_d_form.T[lower_vocab].T[lower_vocab]
+    
+    moses = form_weight*np.array(d_form['moses']) + sem_weight*d_sem[vocab.index('Moses')].numpy()
+    lnp_bible = lm.conditional_logp_single_token("In the Bible, how many animals of each kind did", vocab)
+    df_moses = timecourse(lnp_bible, moses)
 
-def example_timecourses(T=2200, scale=5, prior=.1, distractor=.7, farthest=3, cutoff=515):
+    deaf = form_weight*np.array(d_form['deaf']) + sem_weight*d_sem[vocab.index('deaf')].numpy()
+
+    lnp_bump = lm.conditional_logp_single_token("Braille is an incredible invention that unlocks reading for people who are", vocab)
+    
+    
+    
+    
+    
+
+def example_timecourses(T=2200, scale=5, prior=.1, distractor=.7, farthest=10):
     """ Nice-looking example timecourses """
     max_lam = 15
     num_steps = 1000
     t = np.linspace(0, T, num_steps)
 
-    lnp0 = np.log([prior, (1-prior)*.95, (1-prior)*.05])
+    lnp0 = np.log([prior, (1-prior)*.5, (1-prior)*.5])
     d = np.array([0, farthest, farthest])
     df_n400 = timecourse(lnp0, d, max_lam=max_lam, num_steps=num_steps)
     df_n400['scenario'] = 'n400'
@@ -40,7 +63,7 @@ def example_timecourses(T=2200, scale=5, prior=.1, distractor=.7, farthest=3, cu
     df_p600 = timecourse(lnp0, d, max_lam=max_lam, num_steps=num_steps)
     df_p600['scenario'] = 'p600'
 
-    lnp0 = np.log([prior, (1-prior)*.2, (1-prior)*.8])
+    lnp0 = np.log([prior, (1-prior)*.15, (1-prior)*(1-.15)])
     df_biphasic = timecourse(lnp0, d, max_lam=max_lam, num_steps=num_steps)
     df_biphasic['scenario'] = 'biphasic'
 
@@ -107,7 +130,7 @@ def example_timecourses(T=2200, scale=5, prior=.1, distractor=.7, farthest=3, cu
     axs[1,2].plot(t, df[df['scenario'] == 'biphasic'][2], label="Far Distractor")
     axs[1,2].legend()
 
-    df['region'] = df['t'].map(lambda t: 'P600' if (t/max_lam)>(cutoff/T) else 'N400')
+    df['region'] = df['t'].map(lambda t: 'P600' if (t/max_lam)>.1 else 'N400')
     r = df[['region', 'scenario', 'eeg']].groupby(['region', 'scenario']).sum().reset_index()
     categories = ["N400", "P600"]
 
@@ -127,7 +150,7 @@ def example_timecourses(T=2200, scale=5, prior=.1, distractor=.7, farthest=3, cu
 
     return df
 
-
+                
 
     
     

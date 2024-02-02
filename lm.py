@@ -15,6 +15,14 @@ model = AutoModelForCausalLM.from_pretrained(MODEL)
 WINDOW_SIZE = 1024
 STEP_SIZE = int(WINDOW_SIZE / 2)
 
+def cosine_distance_matrix(words):
+    tokens = [(word, tokenizer.encode(" "+word)) for word in words]
+    good_words, good_tokens = zip(*[(word, token[0]) for word, token in tokens if len(token)==1])
+    embeddings = model.transformer.wte.weight[list(good_tokens)].detach()
+    embeddings_norm = embeddings / embeddings.norm(dim=-1, keepdim=True)
+    distances = 1 - (embeddings_norm @ embeddings_norm.T)
+    return list(good_words), distances.fill_diagonal_(0) # make diagonals exactly 0
+
 def sliding(iterable, window_size, step_size):
     assert step_size <= window_size
     its = []
@@ -84,7 +92,7 @@ def conditional_logp(context: str,
     lnp = batch_query(input)
     mask = input[:, 1:] != padding
     total_lnp = (mask * lnp).sum(-1)
-    return total_lnp.log_softmax(-1)
+    return torch.log_softmax(total_lnp, -1)
 
 def _experimental_conditional_logp(context, completions, padding=tokenizer.eos_token_id):
     """ Get p(completion | context) normalized among completions. """
