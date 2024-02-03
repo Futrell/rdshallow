@@ -3,12 +3,14 @@ import scipy.special
 import pandas as pd
 import matplotlib.pyplot as plt
 
-def timecourse(lnp0, d, max_lam=10, num_steps=100):
+def timecourse(lnp0, d, max_lam=10, num_steps=100, vocab=None):
     """
     Give the predicted processing timecourse given K alternative interpretations for a given input, where
     
     * lnp is an array of shape K giving prior log-probabilities for the alternatives.
     * d is an array of shape K giving distortions for each of the K interpretations.
+
+    Optionally provide an iterable of vocabulary items corresponding to entries in lnp0 and d.
     """
     lam = np.linspace(0, max_lam, num_steps) # shape L
     unnormalized = lnp0[None, :] - lam[:, None]*d[None, :]  # shape LK
@@ -16,11 +18,13 @@ def timecourse(lnp0, d, max_lam=10, num_steps=100):
     lnp = unnormalized - lnZ[:, None] # shape LK
     p = np.exp(lnp) # shape LK
     df = pd.DataFrame(p) # dataframe containing probabilities for each interpretation at each time
-    df['t'] = lam
+    df['processing_time'] = lam
     df['expected_distortion'] = p @ d
     df['variance_distortion'] = p @ d**2 - (p @ d)**2
     df['kl_div'] = -lnZ - lam*df['expected_distortion']
     df['d_kl_div'] = lam * df['variance_distortion']
+    if vocab is not None:
+        df.columns = list(vocab) + "processing_time expected_distortion variance_distortion kl_div d_kl_div".split()
     return df
 
 def moses_example(form_weight=0, sem_weight=1):
