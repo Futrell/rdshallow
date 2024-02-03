@@ -9,8 +9,6 @@ def timecourse(lnp0, d, max_lam=10, num_steps=100):
     
     * lnp is an array of shape K giving prior log-probabilities for the alternatives.
     * d is an array of shape K giving distortions for each of the K interpretations.
-    
-    Index 0 is assumed to be the "true" interpretation (lowest distortion).
     """
     lam = np.linspace(0, max_lam, num_steps) # shape L
     unnormalized = lnp0[None, :] - lam[:, None]*d[None, :]  # shape LK
@@ -34,19 +32,11 @@ def moses_example(form_weight=0, sem_weight=1):
     vocab, d_sem = lm.cosine_distance_matrix(full_vocab)
     lower_vocab = list(map(str.lower, vocab))
     d_form = full_d_form.T[lower_vocab].T[lower_vocab]
-    
     moses = form_weight*np.array(d_form['moses']) + sem_weight*d_sem[vocab.index('Moses')].numpy()
     lnp_bible = lm.conditional_logp_single_token("In the Bible, how many animals of each kind did", vocab)
     df_moses = timecourse(lnp_bible, moses)
-
-    deaf = form_weight*np.array(d_form['deaf']) + sem_weight*d_sem[vocab.index('deaf')].numpy()
-
-    lnp_bump = lm.conditional_logp_single_token("Braille is an incredible invention that unlocks reading for people who are", vocab)
-    
-    
-    
-    
-    
+    df_moses.columns = vocab + ['processing_time', 'expected_distortion', 'variance_distortion', 'kl_div', 'd_kl_div']
+    return df_moses
 
 def example_timecourses(T=2200, scale=5, prior=.1, distractor=.7, farthest=10):
     """ Nice-looking example timecourses """
