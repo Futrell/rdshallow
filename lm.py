@@ -9,8 +9,10 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 MODEL = "gpt2"
 
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
 tokenizer = AutoTokenizer.from_pretrained(MODEL)
-model = AutoModelForCausalLM.from_pretrained(MODEL)
+model = AutoModelForCausalLM.from_pretrained(MODEL).to(device)
 
 WINDOW_SIZE = 1024
 STEP_SIZE = int(WINDOW_SIZE / 2)
@@ -79,7 +81,7 @@ def conditional_logp_single_token(context: str,
                                   completions: Iterable[str],
                                   sep=" "):
     tokens = [sep.join([context, completion]) for completion in completions]
-    token_ids = torch.LongTensor([tokenizer.encode(token) for token in tokens])
+    token_ids = torch.LongTensor([tokenizer.encode(token) for token in tokens]).to(device)
     context_input = token_ids[0, :-1]
     completion_input = token_ids[:, -1]
     with torch.no_grad():
@@ -92,7 +94,7 @@ def conditional_logp(context: str,
                      sep=" "):
     """ Get p(completion | context) normalized among completions """
     tokens = [sep.join([context, completion]) for completion in completions]
-    input = torch.LongTensor(tokenize_with_padding(tokens, padding=padding))
+    input = torch.LongTensor(tokenize_with_padding(tokens, padding=padding)).to(device)
     lnp = batch_query(input)
     mask = input[:, 1:] != padding
     total_lnp = (mask * lnp).sum(-1)

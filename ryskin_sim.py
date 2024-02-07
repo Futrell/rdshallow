@@ -1,3 +1,5 @@
+import sys
+
 import pandas as pd
 import tqdm
 
@@ -5,7 +7,7 @@ import shallow as sh
 import lm
 
 STIMULI_PATH = "ryskin_stimuli.csv"
-EDIT_MATRIX_PATH = "/Users/canjo/data/subtlex/en_editmatrix10000_plus.csv"
+EDIT_MATRIX_PATH = "en_editmatrix10000_plus.csv"
 
 def simulate(filename=STIMULI_PATH, edit_matrix_path=EDIT_MATRIX_PATH, lnps=None):
     stimuli = pd.read_csv(filename, index_col=0)
@@ -44,4 +46,5 @@ def simulate(filename=STIMULI_PATH, edit_matrix_path=EDIT_MATRIX_PATH, lnps=None
     df = pd.concat(list(gen()))
     return df
     
-    
+if __name__ == '__main__':
+    simulate().to_csv(sys.stdout)
