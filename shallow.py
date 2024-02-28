@@ -27,6 +27,32 @@ def timecourse(lnp0, d, max_lam=10, num_steps=100, vocab=None):
     df['d_kl_div'] = lam * df['variance_distortion']
     return df
 
+def hunted_example(comma_distortion=1, word_distortion=1, t_old=5, t_new=5):
+    alternatives = [
+        "While the hunters hunted the deer ran",
+        "While the hunters hunted, the deer ran",
+        "While the hunters hunted the deer they",
+        "While the hunters hunted, the deer they"
+    ]
+    
+    # from GPT-2, modified so that the third alternative isn't incredibly probable:
+    lnp0 = np.array([-6.7500e+00, -6.1137e+00, -5.1715e-00, -6.3339e+00])
+    
+    # made up distortions:
+    d_c = np.array([0, comma_distortion, 0, comma_distortion])
+    d_x = np.array([0, 0, word_distortion, word_distortion])
+    d_cx = d_c + d_x
+    d_x_given_c = d_cx - d_c
+    
+    old_timecourse = timecourse(lnp0, d_c, max_lam=t_old)
+    old_timecourse['phase'] = 0
+    # get last distribution to use as the new default policy
+    lnp_c = np.log(old_timecourse[old_timecourse['processing_time'] == old_timecourse['processing_time'].max()][range(4)].to_numpy().squeeze(0))
+    new_timecourse = timecourse(lnp_c, d_cx, max_lam=t_new)
+    new_timecourse['phase'] = 1
+    new_timecourse['processing_time'] = new_timecourse['processing_time'] + t_old
+    return pd.concat([old_timecourse, new_timecourse])
+
 def moses_example(form_weight=0, sem_weight=1):
     import lm
     full_d_form = pd.read_csv("/Users/canjo/data/subtlex/en_editmatrix10000_plus.csv", index_col=0)
