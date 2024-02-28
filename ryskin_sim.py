@@ -4,12 +4,11 @@ import pandas as pd
 import tqdm
 
 import shallow as sh
-import lm
 
 STIMULI_PATH = "ryskin_stimuli.csv"
 EDIT_MATRIX_PATH = "en_editmatrix10000_plus.csv"
 
-def simulate(filename=STIMULI_PATH, edit_matrix_path=EDIT_MATRIX_PATH, lnps=None):
+def simulate(filename=STIMULI_PATH, edit_matrix_path=EDIT_MATRIX_PATH, lnps=None, **kwds):
     stimuli = pd.read_csv(filename, index_col=0)
     distortion = pd.read_csv(edit_matrix_path, index_col=0)
     vocab = list(distortion.columns)
@@ -27,6 +26,7 @@ def simulate(filename=STIMULI_PATH, edit_matrix_path=EDIT_MATRIX_PATH, lnps=None
     contexts = good_stimuli[['item', 'context']].drop_duplicates()
 
     if lnps is None:
+        import lm
         lnps = {
             item : lm.conditional_logp(context, vocab)
             for _, (item, context) in tqdm.tqdm(contexts.iterrows(), total=len(contexts))
@@ -36,7 +36,7 @@ def simulate(filename=STIMULI_PATH, edit_matrix_path=EDIT_MATRIX_PATH, lnps=None
         for i, row in tqdm.tqdm(good_stimuli.iterrows(), total=len(good_stimuli)):
             item = row['item']
             target = row['target']
-            df = sh.timecourse(lnps[item], distortion[target], vocab=vocab)
+            df = sh.timecourse(lnps[item], distortion[target], vocab=vocab, **kwds)
             df['_item'] = item
             df['_target'] = target
             df['_context'] = row['context']
